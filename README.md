@@ -1,8 +1,8 @@
 # smarthome
 
-Rquirements
+Requirements
 
-sqlite3
-pymongo
-bson
+sqlite3<br/> 
+pymongo<br/> 
+bson<br/> 
 PyQt5
