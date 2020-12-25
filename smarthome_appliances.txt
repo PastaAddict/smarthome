@@ -1,0 +1,15 @@
+INSERT INTO syskeyi(device_id,eidos,dwmatio,energi)
+              VALUES('5fd688ab0cc1ed38ec8a7006','thermosifwnas','mpanio',false);
+
+
+INSERT INTO syskeyi(device_id,eidos,dwmatio,energi)
+              VALUES('5fd688720cc1ed38ec8a7005','mprizes','kouzina',true);
+
+
+
+
+IN MONGO SHELL
+
+use smarthome
+db.appliances.insert({"_id":{"$oid":"5fd688720cc1ed38ec8a7005"},"parametroi":["energh1","energh2"],"entoles":{"energopoihse":{"entolh_id":{"$oid":"5fe24be4a42de2b58e74877e"},"parametroi":["mpriza1","mpriza2"]}}})
+db.appliances.insert({"_id":{"$oid":"5fd688ab0cc1ed38ec8a7006"},"parametroi":["xronos"],"entoles":{"anapse":{"entolh_id":{"$oid":"5fe24dc2a42de2b58e74877f"},"parametroi":[null]},"sbhse":{"entolh_id":{"$oid":"5fe24e06a42de2b58e748780"},"parametroi":[null]},"xronometro":{"entolh_id":{"$oid":"5fe24e36a42de2b58e748781"},"parametroi":["xronos"]}}})
