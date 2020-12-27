@@ -243,7 +243,7 @@ class Window(QWidget):
                 self.stackedLayout.setCurrentIndex(3)
             else:
                 
-                sql = f'''select exei_prosvasi.device_id,eidos,dwmatio from exei_prosvasi join syskeyi on syskeyi.device_id=exei_prosvasi.device_id
+                sql = f'''select exei_prosvasi.device_id,eidos,dwmatio,energi from exei_prosvasi join syskeyi on syskeyi.device_id=exei_prosvasi.device_id
                 and username_prosvasis='{self.profile}';'''
                 cursor.execute(sql)
                 self.allowed_appliances = cursor.fetchall()
@@ -397,6 +397,7 @@ class Window(QWidget):
                 cntr+=1
 
             self.appliance_id = self.appliances[cntr][0]
+            self.appliance_isActive = self.appliances[cntr][3]
             self.entoles = db['appliances'].find({'_id':ObjectId(self.appliance_id)})[0]['entoles']
             
         else:
@@ -406,8 +407,14 @@ class Window(QWidget):
                 cntr+=1
 
             self.appliance_id = self.allowed_appliances[cntr][0]
+            self.appliance_isActive = self.allowed_appliances[cntr][3]
             self.entoles = db['appliances'].find({'_id':ObjectId(self.appliance_id)})[0]['entoles']
 
+        if self.appliance_isActive:
+            self.entoles = {i:self.entoles[i] for i in self.entoles if i!='anapse'}
+        else:
+            self.entoles = {i:self.entoles[i] for i in self.entoles if i=='anapse'}
+        
         for i in reversed(range(self.page9Layout.count())): 
             self.page9Layout.itemAt(i).widget().setParent(None)
         
@@ -436,11 +443,24 @@ class Window(QWidget):
             if self.page9Layout.itemAt(cntr).widget() == a:
                 break
             cntr+=1
-        
-        entoli = self.entoles[list(self.entoles.keys())[cntr]]
+
+        entoli_name = list(self.entoles.keys())[cntr]
+        entoli = self.entoles[entoli_name]
+
+        if entoli_name == 'anapse':
+            sql=f''' UPDATE syskeyi SET energi=true
+                WHERE device_id = '{self.appliance_id}' '''
+            cursor.execute(sql)
+
+        elif entoli_name == 'sbhse':
+            sql=f''' UPDATE syskeyi SET energi=false
+                WHERE device_id = '{self.appliance_id}' '''
+            cursor.execute(sql)
+
+            
+            
         _id = str(entoli['entolh_id'])
-
-
+        
         sql=f''' INSERT INTO entoli(command)
               VALUES('{_id}') '''
         cursor.execute(sql)
@@ -451,8 +471,20 @@ class Window(QWidget):
 
         sql=f''' INSERT INTO pragmatopoiei(username_pragma,command_id_pragma,date_time)
               VALUES('{self.profile}',last_insert_rowid(),CURRENT_TIMESTAMP) '''
+
+        #reinitialize appliances to reset energi row
+        cursor.execute("SELECT * FROM syskeyi")
+        self.appliances = cursor.fetchall()
+
+        sql = f'''select exei_prosvasi.device_id,eidos,dwmatio,energi from exei_prosvasi join syskeyi on syskeyi.device_id=exei_prosvasi.device_id
+                and username_prosvasis='{self.profile}';'''
+        cursor.execute(sql)
+        self.allowed_appliances = cursor.fetchall()
+        
         cursor.execute(sql)
         conn.commit()
+
+        self.back_to_appliances()
         
             
 
