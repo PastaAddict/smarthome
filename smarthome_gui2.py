@@ -471,6 +471,7 @@ class Window(QWidget):
 
         sql=f''' INSERT INTO pragmatopoiei(username_pragma,command_id_pragma,date_time)
               VALUES('{self.profile}',last_insert_rowid(),CURRENT_TIMESTAMP) '''
+        cursor.execute(sql)
 
         #reinitialize appliances to reset energi row
         cursor.execute("SELECT * FROM syskeyi")
