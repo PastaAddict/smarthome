@@ -71,6 +71,7 @@ CREATE TABLE "syskeyi" (
 	"eidos"	varchar(50) NOT NULL,
 	"dwmatio"	varchar(30),
 	"energi"	boolean,
+	"kwh"	        real,
 	PRIMARY KEY("device_id")
 );
 
