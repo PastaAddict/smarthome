@@ -151,6 +151,10 @@ class Window(QWidget):
         self.page5Layout.addRow(self.use_appliances_button)
         self.use_appliances_button.clicked.connect(self.use_appliances)
 
+        self.consumption_button = QPushButton('Show consumption')
+        self.page5Layout.addRow( self.consumption_button)
+        self.consumption_button.clicked.connect(self.show_consumption)
+
         self.exit_primary = QPushButton('Exit')
         self.page5Layout.addRow(self.exit_primary)
         self.exit_primary.clicked.connect(self.homepage)
@@ -216,6 +220,40 @@ class Window(QWidget):
 
         self.page9.setLayout(self.page9Layout)
         self.stackedLayout.addWidget(self.page9)
+
+        # Create the ninth page (show appliance consumption)
+        self.page10 = QWidget()
+        self.page10Layout = QFormLayout()
+
+        for i in self.appliances:
+            anapse_id = str(db['appliances'].find({'_id':ObjectId(i[0])})[0]['entoles']['anapse']['entolh_id'])
+            sbhse_id = str(db['appliances'].find({'_id':ObjectId(i[0])})[0]['entoles']['sbhse']['entolh_id'])
+    
+            sql =   f'''select device_id_ele,
+                        case 
+                        when energi=0 then sum(opened_for)*kwh
+                        else sum(opened_for)*kwh + (julianday(CURRENT_TIMESTAMP) - julianday(max(opened_on)))* 24*kwh end total_consumption from
+                        (select *,(julianday(closed_on) - julianday(opened_on))* 24  as opened_for  from
+                        (select command_id,command,date_time as opened_on,device_id_ele,
+                        lead (date_time) over(order by date_time) closed_on
+                        from
+                        (select command_id,command,date_time,device_id_ele from(select * from pragmatopoiei join elegxei on pragmatopoiei.command_id_pragma = elegxei.command_id_ele) e1
+                        join entoli on entoli.command_id = e1.command_id_ele
+                        where device_id_ele = '{i[0]}' and (command = '{anapse_id}' or command = '{sbhse_id}')))
+                        where command = '{anapse_id}') join syskeyi on device_id_ele = syskeyi.device_id
+                        group by command'''
+            cursor.execute(sql)
+            consumption = cursor.fetchall()
+            self.clabel = QLabel()
+            self.clabel.setText(i[1]+' : '+str(round(consumption[0][1],3))+' KW')
+            self.page10Layout.addRow(self.clabel)
+
+        self.exit_consumption = QPushButton('Exit')
+        self.page10Layout.addRow(self.exit_consumption)
+        self.exit_consumption.clicked.connect(self.cancel_restrictions)
+
+        self.page10.setLayout(self.page10Layout)
+        self.stackedLayout.addWidget(self.page10)
         
         # Add the combo box and the stacked layout to the top-level layout
         layout.addLayout(self.stackedLayout)
@@ -472,7 +510,7 @@ class Window(QWidget):
         sql=f''' INSERT INTO pragmatopoiei(username_pragma,command_id_pragma,date_time)
               VALUES('{self.profile}',last_insert_rowid(),CURRENT_TIMESTAMP) '''
         cursor.execute(sql)
-
+        
         #reinitialize appliances to reset energi row
         cursor.execute("SELECT * FROM syskeyi")
         self.appliances = cursor.fetchall()
@@ -486,7 +524,9 @@ class Window(QWidget):
         conn.commit()
 
         self.back_to_appliances()
-        
+
+    def show_consumption(self):
+        self.stackedLayout.setCurrentIndex(8)
             
 
 if __name__ == "__main__":
