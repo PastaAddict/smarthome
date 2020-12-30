@@ -1,9 +1,9 @@
-INSERT INTO syskeyi(device_id,eidos,dwmatio,energi)
-              VALUES('5fd688ab0cc1ed38ec8a7006','thermosifwnas','mpanio',false);
+INSERT INTO syskeyi(device_id,eidos,dwmatio,energi,kwh)
+              VALUES('5fd688ab0cc1ed38ec8a7006','thermosifwnas','mpanio',false,0.33);
 
 
-INSERT INTO syskeyi(device_id,eidos,dwmatio,energi)
-              VALUES('5fd688720cc1ed38ec8a7005','mprizes','kouzina',true);
+INSERT INTO syskeyi(device_id,eidos,dwmatio,energi,kwh)
+              VALUES('5fd688720cc1ed38ec8a7005','mprizes','kouzina',false,0.0001);
 
 
 
