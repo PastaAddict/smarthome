@@ -9,6 +9,7 @@ cursor = conn.cursor()
 client = pymongo.MongoClient('localhost', 27017)
 db = client['smarthome']
 
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QApplication,
     QComboBox,
@@ -19,7 +20,8 @@ from PyQt5.QtWidgets import (
     QWidget,
     QPushButton,
     QCheckBox,
-    QLabel
+    QLabel,
+    QSlider
 )
 
 class Window(QWidget):
@@ -225,35 +227,15 @@ class Window(QWidget):
         self.page10 = QWidget()
         self.page10Layout = QFormLayout()
 
-        for i in self.appliances:
-            anapse_id = str(db['appliances'].find({'_id':ObjectId(i[0])})[0]['entoles']['anapse']['entolh_id'])
-            sbhse_id = str(db['appliances'].find({'_id':ObjectId(i[0])})[0]['entoles']['sbhse']['entolh_id'])
-    
-            sql =   f'''select device_id_ele,
-                        case 
-                        when energi=0 then sum(opened_for)*kwh
-                        else sum(opened_for)*kwh + (julianday(CURRENT_TIMESTAMP) - julianday(max(opened_on)))* 24*kwh end total_consumption from
-                        (select *,(julianday(closed_on) - julianday(opened_on))* 24  as opened_for  from
-                        (select command_id,command,date_time as opened_on,device_id_ele,
-                        lead (date_time) over(order by date_time) closed_on
-                        from
-                        (select command_id,command,date_time,device_id_ele from(select * from pragmatopoiei join elegxei on pragmatopoiei.command_id_pragma = elegxei.command_id_ele) e1
-                        join entoli on entoli.command_id = e1.command_id_ele
-                        where device_id_ele = '{i[0]}' and (command = '{anapse_id}' or command = '{sbhse_id}')))
-                        where command = '{anapse_id}') join syskeyi on device_id_ele = syskeyi.device_id
-                        group by command'''
-            cursor.execute(sql)
-            consumption = cursor.fetchall()
-            self.clabel = QLabel()
-            self.clabel.setText(i[1]+' : '+str(round(consumption[0][1],3))+' KW')
-            self.page10Layout.addRow(self.clabel)
-
-        self.exit_consumption = QPushButton('Exit')
-        self.page10Layout.addRow(self.exit_consumption)
-        self.exit_consumption.clicked.connect(self.cancel_restrictions)
-
         self.page10.setLayout(self.page10Layout)
         self.stackedLayout.addWidget(self.page10)
+
+        # Create the tenth page (enter command parameters)
+        self.page11 = QWidget()
+        self.page11Layout = QFormLayout()
+
+        self.page11.setLayout(self.page11Layout)
+        self.stackedLayout.addWidget(self.page11)
         
         # Add the combo box and the stacked layout to the top-level layout
         layout.addLayout(self.stackedLayout)
@@ -331,6 +313,8 @@ class Window(QWidget):
         self.button = QPushButton(self.new_username.text())
         self.page1Layout.addRow(self.button)
         self.button.clicked.connect(self.selectProfile)
+
+        self.master_profiles.addItem(self.new_username.text())
 
         self.cancel_new()
 
@@ -522,10 +506,105 @@ class Window(QWidget):
         
         cursor.execute(sql)
         conn.commit()
+        #
+        
+        sql = f'''select last_insert_rowid() ;'''
+        cursor.execute(sql)
+        self.entoli_id = str(cursor.fetchall()[0][0])
+        
 
-        self.back_to_appliances()
+        if entoli['parametroi']:
+            for i in reversed(range(self.page11Layout.count())): 
+                self.page11Layout.itemAt(i).widget().setParent(None)
+            
+            for i in entoli['parametroi'].keys():
+                
+                self.slider = QSlider()
+                self.slider.setOrientation(Qt.Horizontal)
+                self.slider.setTickPosition(QSlider.TicksBelow)
+                self.slider.setTickInterval(10)
+                self.slider.setMinimum(entoli['parametroi'][i][0])
+                self.slider.setMaximum(entoli['parametroi'][i][1])
+                self.slider.valueChanged.connect(self.changedValue)
+                
+                self.slider_label = QLabel(i)
+                self.slider_value = QLabel(' : ')
+                self.page11Layout.addRow(self.slider_label,self.slider_value)
+                self.page11Layout.addRow(self.slider)
 
+            self.parameters_button = QPushButton('Enter parameters')
+            self.page11Layout.addRow(self.parameters_button)
+            self.parameters_button.clicked.connect(self.save_command_mongo)
+
+
+            self.stackedLayout.setCurrentIndex(9)
+                
+            
+        else:
+            db.arxeio_entolwn.insert_one({"_id":ObjectId('0'*(24-len(self.entoli_id))+self.entoli_id),"parametroi":None})
+            self.back_to_appliances()
+
+    
+    def changedValue(self):
+        a = self.sender()
+        cntr=0
+
+        while True:
+            if self.page11Layout.itemAt(cntr).widget() == a:
+                break
+            cntr+=1
+            
+        size = a.value()
+        self.page11Layout.itemAt(cntr-1).widget().setText(' : ' + str(size))
+        
+    def save_command_mongo(self):
+        parametroi = {}
+
+        for i in range(0,self.page11Layout.count(),3):
+            try:
+                parametroi.update({self.page11Layout.itemAt(i).widget().text():self.page11Layout.itemAt(i+2).widget().value()})
+
+            except:
+                break
+
+        db.arxeio_entolwn.insert_one({"_id":ObjectId('0'*(24-len(self.entoli_id))+self.entoli_id),"parametroi":parametroi})
+        self.stackedLayout.setCurrentIndex(7)
+        
     def show_consumption(self):
+        
+        for i in reversed(range(self.page10Layout.count())): 
+                self.page10Layout.itemAt(i).widget().setParent(None)
+                
+        for i in self.appliances:
+            anapse_id = str(db['appliances'].find({'_id':ObjectId(i[0])})[0]['entoles']['anapse']['entolh_id'])
+            sbhse_id = str(db['appliances'].find({'_id':ObjectId(i[0])})[0]['entoles']['sbhse']['entolh_id'])
+    
+            sql =   f'''select device_id_ele,
+                        case 
+                        when energi=0 then sum(opened_for)*kwh
+                        else sum(opened_for)*kwh + (julianday(CURRENT_TIMESTAMP) - julianday(max(opened_on)))* 24*kwh end total_consumption from
+                        (select *,(julianday(closed_on) - julianday(opened_on))* 24  as opened_for  from
+                        (select command_id,command,date_time as opened_on,device_id_ele,
+                        lead (date_time) over(order by date_time) closed_on
+                        from
+                        (select command_id,command,date_time,device_id_ele from(select * from pragmatopoiei join elegxei on pragmatopoiei.command_id_pragma = elegxei.command_id_ele) e1
+                        join entoli on entoli.command_id = e1.command_id_ele
+                        where device_id_ele = '{i[0]}' and (command = '{anapse_id}' or command = '{sbhse_id}')))
+                        where command = '{anapse_id}') join syskeyi on device_id_ele = syskeyi.device_id
+                        group by command'''
+            cursor.execute(sql)
+            consumption = cursor.fetchall()
+            self.clabel = QLabel()
+            try:
+                self.clabel.setText(i[1]+' : '+str(round(consumption[0][1],3))+' KW')
+            except:
+                self.clabel.setText(i[1]+' : 0 KW')
+            self.page10Layout.addRow(self.clabel)
+
+        self.exit_consumption = QPushButton('Exit')
+        self.page10Layout.addRow(self.exit_consumption)
+        self.exit_consumption.clicked.connect(self.cancel_restrictions)
+        
         self.stackedLayout.setCurrentIndex(8)
             
 
