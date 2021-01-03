@@ -2,6 +2,7 @@ import sys
 import sqlite3
 import pymongo
 from bson.objectid import ObjectId
+import pandas as pd
 
 conn = sqlite3.connect(r"C:\Users\krist\OneDrive\Υπολογιστής\smarthome.db")
 cursor = conn.cursor()
@@ -9,8 +10,10 @@ cursor = conn.cursor()
 client = pymongo.MongoClient('localhost', 27017)
 db = client['smarthome']
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QAbstractTableModel
+from PyQt5.QtGui import QStandardItemModel
 from PyQt5.QtWidgets import (
+    QMainWindow,
     QApplication,
     QComboBox,
     QFormLayout,
@@ -21,8 +24,84 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QCheckBox,
     QLabel,
-    QSlider
+    QSlider,
+    QTableView,
+    QAbstractScrollArea,
+    QHeaderView
 )
+
+class TableModel(QAbstractTableModel):
+
+    def __init__(self, data):
+        super(TableModel, self).__init__()
+        self._data = data
+
+    def data(self, index, role):
+        if role == Qt.DisplayRole:
+            value = self._data.iloc[index.row(), index.column()]
+            return str(value)
+
+    def rowCount(self, index):
+        return self._data.shape[0]
+
+    def columnCount(self, index):
+        return self._data.shape[1]
+
+    def headerData(self, section, orientation, role):
+        # section is the index of the column/row.
+        if role == Qt.DisplayRole:
+            if orientation == Qt.Horizontal:
+                return str(self._data.columns[section])
+
+            if orientation == Qt.Vertical:
+                return str(self._data.index[section])
+
+        
+class Window2(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Smarthome History")
+
+
+        self.table = QTableView()
+        
+        sql   = ''' select date_time,username_pragma,eidos,dwmatio,command,command_id,device_id from 
+                    ((pragmatopoiei join elegxei on elegxei.command_id_ele = pragmatopoiei.command_id_pragma) a1 
+                    join syskeyi on a1.device_id_ele = syskeyi.device_id) a2 
+                    join entoli on entoli.command_id = a2.command_id_ele
+                    order by date_time desc '''
+
+        cursor.execute(sql)
+        self.commands = cursor.fetchall()
+        
+        history = []
+        
+        for i in self.commands:
+            
+            instance = [i[0],i[1],i[2]+' '+i[3]]
+            appliance_commands = db['appliances'].find({'_id':ObjectId(i[6])})[0]['entoles']
+            
+            for j in appliance_commands.keys():
+                if appliance_commands[j]['entolh_id'] == ObjectId(i[4]):
+                    instance.append(j)
+
+            try:
+                instance.append(db['arxeio_entolwn'].find({"_id":ObjectId('0'*(24-len(str(i[5])))+str(i[5]))})[0]['parametroi'])
+            except:
+                instance.append(0)
+            history.append(instance)
+            
+        
+        data = pd.DataFrame(history, columns = ['Date/Time', 'Username', 'Appliance','Command','Parameters'])
+
+        self.model = TableModel(data)
+        self.table.setModel(self.model)
+
+        self.table.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        
+        self.setCentralWidget(self.table)
+    
 
 class Window(QWidget):
     def __init__(self):
@@ -154,8 +233,12 @@ class Window(QWidget):
         self.use_appliances_button.clicked.connect(self.use_appliances)
 
         self.consumption_button = QPushButton('Show consumption')
-        self.page5Layout.addRow( self.consumption_button)
+        self.page5Layout.addRow(self.consumption_button)
         self.consumption_button.clicked.connect(self.show_consumption)
+
+        self.history_button = QPushButton('Show history')
+        self.page5Layout.addRow(self.history_button)
+        self.history_button.clicked.connect(self.show_history)
 
         self.exit_primary = QPushButton('Exit')
         self.page5Layout.addRow(self.exit_primary)
@@ -236,6 +319,13 @@ class Window(QWidget):
 
         self.page11.setLayout(self.page11Layout)
         self.stackedLayout.addWidget(self.page11)
+
+        # Create the eleventh page (command history page)
+        self.page12 = QWidget()
+        self.page12Layout = QFormLayout()
+        
+        self.page12.setLayout(self.page12Layout)
+        self.stackedLayout.addWidget(self.page12)
         
         # Add the combo box and the stacked layout to the top-level layout
         layout.addLayout(self.stackedLayout)
@@ -606,7 +696,11 @@ class Window(QWidget):
         self.exit_consumption.clicked.connect(self.cancel_restrictions)
         
         self.stackedLayout.setCurrentIndex(8)
-            
+
+    def show_history(self):
+        self.w = Window2()
+        self.w.show()
+       
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
