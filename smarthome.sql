@@ -54,7 +54,7 @@ CREATE TABLE "pragmatopoiei" (
 CREATE TABLE "profil_xristi" (
 	"username"	VARCHAR(30) NOT NULL,
 	"kwdikos"	varchar(30) NOT NULL,
-	"alternative_password"	varchar(30) NOT NULL,
+	"alternative_password"	varchar(30),
 	"dimosio"	boolean,
 	"pollaplwn_xriston"	boolean,
 	PRIMARY KEY("username")
