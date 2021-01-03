@@ -2,7 +2,7 @@ import sys
 import sqlite3
 import pymongo
 from bson.objectid import ObjectId
-import pandas as pd
+from pandas import DataFrame
 
 conn = sqlite3.connect(r"C:\Users\krist\OneDrive\Υπολογιστής\smarthome.db")
 cursor = conn.cursor()
@@ -56,6 +56,17 @@ class TableModel(QAbstractTableModel):
             if orientation == Qt.Vertical:
                 return str(self._data.index[section])
 
+    def sort(self, Ncol, order):
+        """Sort table by given column number.
+        """
+        try:
+            self.layoutAboutToBeChanged.emit()
+            self._data = self._data.sort_values(self._data.columns[Ncol], ascending=not order)
+            self.layoutChanged.emit()
+        except Exception as e:
+            print(e)
+
+
         
 class Window2(QMainWindow):
     def __init__(self):
@@ -92,20 +103,22 @@ class Window2(QMainWindow):
             history.append(instance)
             
         
-        data = pd.DataFrame(history, columns = ['Date/Time', 'Username', 'Appliance','Command','Parameters'])
+        data = DataFrame(history, columns = ['Date/Time', 'Username', 'Appliance','Command','Parameters'])
 
         self.model = TableModel(data)
         self.table.setModel(self.model)
 
         self.table.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-        
+
+        self.table.setSortingEnabled(True)
         self.setCentralWidget(self.table)
     
 
 class Window(QWidget):
     def __init__(self):
         super().__init__()
+
         self.setWindowTitle("Smarthome")
         cursor.execute("SELECT * FROM syskeyi")
         self.appliances = cursor.fetchall()
@@ -173,6 +186,8 @@ class Window(QWidget):
 
         self.cancel_new_profile = QPushButton('Cancel')
         self.cancel_new_profile.clicked.connect(self.cancel_new)
+        self.error_label = QLabel('')
+
         
         self.stackedLayout2 = QStackedLayout()
         
@@ -215,6 +230,7 @@ class Window(QWidget):
         self.newProfilePageLayout.addWidget(self.isMulti)
         self.newProfilePageLayout.addLayout(self.stackedLayout2)
         self.newProfilePageLayout.addWidget(self.cancel_new_profile)
+        self.newProfilePageLayout.addWidget(self.error_label)
         self.stackedLayout.addWidget(self.newProfilePage)
 
 
@@ -341,10 +357,10 @@ class Window(QWidget):
 
     def enterPassword(self):
         password = self.page2Layout.itemAt(0).widget().text()
-        cursor.execute(f"SELECT kwdikos FROM 'profil_xristi' WHERE username = '{self.profile}' ;")
+        cursor.execute(f"SELECT kwdikos,alternative_password,dimosio FROM 'profil_xristi' WHERE username = '{self.profile}' ;")
         correct_password = cursor.fetchall()
         
-        if password == correct_password[0][0]:
+        if password == correct_password[0][0] or password == correct_password[0][1] or correct_password[0][2]:
             self.label.setText('')
             
             cursor.execute(f"SELECT * FROM 'proteuon_profil' WHERE username_pro = '{self.profile}' ;")
@@ -375,7 +391,7 @@ class Window(QWidget):
                 self.stackedLayout.setCurrentIndex(4)
             
         else:
-            self.label.setText('Incorrect password, try again')
+            self.label.setText('Incorrect, try again or enter 2nd password')
 
     def switchPage(self):
         self.stackedLayout2.setCurrentIndex(self.pageCombo.currentIndex())
@@ -389,48 +405,66 @@ class Window(QWidget):
         self.stackedLayout.setCurrentIndex(0)
 
     def createPrimaryProfile(self):
+        if self.new_username.text()!='' and ((self.new_password.text()!='') ^ self.isPublic.isChecked()):
+            try:
+                sql=f''' INSERT INTO proteuon_profil(username_pro)
+                    VALUES('{self.new_username.text()}') '''
+                cursor.execute(sql)
 
-        sql=f''' INSERT INTO proteuon_profil(username_pro)
-            VALUES('{self.new_username.text()}') '''
-        cursor.execute(sql)
+                cursor.execute('''INSERT INTO profil_xristi(username,kwdikos,alternative_password,dimosio,pollaplwn_xriston)
+                    VALUES(?,?,?,?,?)''',(self.new_username.text(),self.new_password.text(),None if self.new_alternative_password.text()=='' else self.new_alternative_password.text(),self.isPublic.isChecked(),self.isMulti.isChecked()))
 
-        sql=f''' INSERT INTO profil_xristi(username,kwdikos,alternative_password,dimosio,pollaplwn_xriston)
-            VALUES('{self.new_username.text()}','{self.new_password.text()}','{self.new_alternative_password.text()}',{self.isPublic.isChecked()},{self.isMulti.isChecked()}) '''
-        cursor.execute(sql)
+                conn.commit()
 
-        conn.commit()
+                self.button = QPushButton(self.new_username.text())
+                self.page1Layout.addRow(self.button)
+                self.button.clicked.connect(self.selectProfile)
 
-        self.button = QPushButton(self.new_username.text())
-        self.page1Layout.addRow(self.button)
-        self.button.clicked.connect(self.selectProfile)
+                self.master_profiles.addItem(self.new_username.text())
 
-        self.master_profiles.addItem(self.new_username.text())
+                self.cancel_new()
+                self.error_label.setText('')
+            except Exception as e:
+                self.error_label.setText('username already exists')
 
-        self.cancel_new()
+        else:
+            self.error_label.setText('Username,password fields must be filled')
+
 
         
 
     def createSecondaryProfile(self):
-        
-        sql=f''' INSERT INTO deutereuon_profil(username_de)
-            VALUES('{self.new_username.text()}') '''
-        cursor.execute(sql)
+        if self.master_profiles.currentText()!='':
+            if self.new_username.text()!='' and ((self.new_password.text()!='') ^ self.isPublic.isChecked()):
+                try:
+                    sql=f''' INSERT INTO deutereuon_profil(username_de)
+                        VALUES('{self.new_username.text()}') '''
+                    cursor.execute(sql)
 
-        sql=f''' INSERT INTO parexei_dikaiwmata(primary_username,secondary_username)
-              VALUES('{self.master_profiles.currentText()}','{self.new_username.text()}') '''
-        cursor.execute(sql)
+                    sql=f''' INSERT INTO parexei_dikaiwmata(primary_username,secondary_username)
+                          VALUES('{self.master_profiles.currentText()}','{self.new_username.text()}') '''
+                    cursor.execute(sql)
 
-        sql=f''' INSERT INTO profil_xristi(username,kwdikos,alternative_password,dimosio,pollaplwn_xriston)
-            VALUES('{self.new_username.text()}','{self.new_password.text()}','{self.new_alternative_password.text()}',{self.isPublic.isChecked()},{self.isMulti.isChecked()}) '''
-        cursor.execute(sql)
+                    cursor.execute('''INSERT INTO profil_xristi(username,kwdikos,alternative_password,dimosio,pollaplwn_xriston)
+                    VALUES(?,?,?,?,?)''',(self.new_username.text(),self.new_password.text(),None if self.new_alternative_password.text()=='' else self.new_alternative_password.text(),self.isPublic.isChecked(),self.isMulti.isChecked()))
 
-        conn.commit()
 
-        self.button = QPushButton(self.new_username.text())
-        self.page1Layout.addRow(self.button)
-        self.button.clicked.connect(self.selectProfile)
+                    conn.commit()
 
-        self.cancel_new()
+                    self.button = QPushButton(self.new_username.text())
+                    self.page1Layout.addRow(self.button)
+                    self.button.clicked.connect(self.selectProfile)
+                    self.cancel_new()
+                    self.error_label.setText('')
+                    
+                except:
+                    elf.error_label.setText('username already exists')
+                    
+            else:
+                self.error_label.setText('Username,password fields must be filled')
+        else:
+            self.error_label.setText('No primary profile to set as master')
+            
 
     def manage_restrictions(self):
         
@@ -467,24 +501,26 @@ class Window(QWidget):
                     self.page7Layout.itemAt(i).widget().setChecked(False)
 
     def apply_restrictions(self):
-        
-        for i in range(2,2+len(self.appliances)):
-            sql = f'''SELECT * FROM exei_prosvasi 
-                    WHERE username_prosvasis='{self.child_profiles.currentText()}' and device_id='{self.appliances[i-2][0]}';'''
-            cursor.execute(sql)
-            has_access = cursor.fetchall()
-            if has_access:
-                if not self.page7Layout.itemAt(i).widget().isChecked():
-                    sql=f''' DELETE FROM exei_prosvasi
-                    WHERE username_prosvasis='{self.child_profiles.currentText()}' and device_id='{self.appliances[i-2][0]}';'''
-                    cursor.execute(sql)
-            else:
-                if self.page7Layout.itemAt(i).widget().isChecked():
-                    sql=f''' INSERT INTO exei_prosvasi(username_prosvasis,device_id)
-                    VALUES('{self.child_profiles.currentText()}','{self.appliances[i-2][0]}') '''
-                    cursor.execute(sql)
+        if self.child_profiles.currentText()!='':
+            for i in range(2,2+len(self.appliances)):
+                sql = f'''SELECT * FROM exei_prosvasi 
+                        WHERE username_prosvasis='{self.child_profiles.currentText()}' and device_id='{self.appliances[i-2][0]}';'''
+                cursor.execute(sql)
+                has_access = cursor.fetchall()
+                if has_access:
+                    if not self.page7Layout.itemAt(i).widget().isChecked():
+                        sql=f''' DELETE FROM exei_prosvasi
+                        WHERE username_prosvasis='{self.child_profiles.currentText()}' and device_id='{self.appliances[i-2][0]}';'''
+                        cursor.execute(sql)
+                else:
+                    if self.page7Layout.itemAt(i).widget().isChecked():
+                        sql=f''' INSERT INTO exei_prosvasi(username_prosvasis,device_id)
+                        VALUES('{self.child_profiles.currentText()}','{self.appliances[i-2][0]}') '''
+                        cursor.execute(sql)
 
-        conn.commit()
+            conn.commit()
+        else:
+            None
 
     def reset_changes(self):
         self.child_restrictions()
@@ -703,7 +739,13 @@ class Window(QWidget):
        
 
 if __name__ == "__main__":
+
+    style = r"C:\Users\krist\OneDrive\Υπολογιστής\style.txt"
     app = QApplication(sys.argv)
+    with open(style,'r') as fh:
+        app.setStyleSheet(fh.read())
+        
     window = Window()
     window.show()
     sys.exit(app.exec_())
+
