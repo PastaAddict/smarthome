@@ -7,8 +7,8 @@ CREATE TABLE  "elegxei" (
 	"command_id_ele"	varchar(255) NOT NULL,
 	"device_id_ele"	varchar(255) NOT NULL,
 	PRIMARY KEY("command_id_ele"),
-	FOREIGN KEY("command_id_ele") REFERENCES "entoli"("command_id") ON DELETE CASCADE,
-	FOREIGN KEY("device_id_ele") REFERENCES "syskeyi"("device_id")
+	FOREIGN KEY("device_id_ele") REFERENCES "syskeyi"("device_id"),
+	FOREIGN KEY("command_id_ele") REFERENCES "entoli"("command_id") ON DELETE CASCADE
 );
 CREATE TABLE  "entoli" (
 	"command_id"	integer,
@@ -19,15 +19,15 @@ CREATE TABLE  "exei_prosvasi" (
 	"username_prosvasis"	varchar(30) NOT NULL,
 	"device_id"	varchar(30) NOT NULL,
 	PRIMARY KEY("username_prosvasis","device_id"),
-	FOREIGN KEY("username_prosvasis") REFERENCES "deutereuon_profil"("username_de") ON DELETE CASCADE,
-	FOREIGN KEY("device_id") REFERENCES "syskeyi"("device_id")
+	FOREIGN KEY("device_id") REFERENCES "syskeyi"("device_id"),
+	FOREIGN KEY("username_prosvasis") REFERENCES "deutereuon_profil"("username_de") ON DELETE CASCADE
 );
 CREATE TABLE  "parexei_dikaiwmata" (
-	"primary_username"	varchar(30) NOT NULL,
+	"primary_username"	varchar(30),
 	"secondary_username"	varchar(30) NOT NULL,
 	PRIMARY KEY("primary_username","secondary_username"),
-	FOREIGN KEY("primary_username") REFERENCES "proteuon_profil"("username_pro") ON DELETE CASCADE,
-	FOREIGN KEY("secondary_username") REFERENCES "deutereuon_profil"("username_de") ON DELETE CASCADE
+	FOREIGN KEY("secondary_username") REFERENCES "deutereuon_profil"("username_de") ON DELETE CASCADE,
+	FOREIGN KEY("primary_username") REFERENCES "proteuon_profil"("username_pro") ON DELETE SET NULL
 );
 CREATE TABLE  "profil_xristi" (
 	"username"	VARCHAR(30) NOT NULL,
@@ -57,7 +57,7 @@ CREATE TABLE  "pragmatopoiei" (
 	"date_time"	datetime NOT NULL,
 	"IP_Address"	varchar(15),
 	PRIMARY KEY("command_id_pragma"),
-	FOREIGN KEY("command_id_pragma") REFERENCES "entoli"("command_id") ON DELETE CASCADE,
+	FOREIGN KEY("command_id_pragma") REFERENCES "entoli"("command_id") ON DELETE SET NULL,
 	FOREIGN KEY("username_pragma") REFERENCES "profil_xristi"("username") ON DELETE SET NULL
 );
 
