@@ -3,12 +3,8 @@ import sqlite3
 import pymongo
 from bson.objectid import ObjectId
 from pandas import DataFrame
+import socket
 
-conn = sqlite3.connect(r"C:\Users\krist\OneDrive\Υπολογιστής\smarthome.db")
-cursor = conn.cursor()
-
-client = pymongo.MongoClient('localhost', 27017)
-db = client['smarthome']
 
 from PyQt5.QtCore import Qt, QAbstractTableModel
 from PyQt5.QtGui import QStandardItemModel
@@ -30,12 +26,20 @@ from PyQt5.QtWidgets import (
     QHeaderView
 )
 
-class TableModel(QAbstractTableModel):
+conn = sqlite3.connect(r"C:\Users\krist\OneDrive\Υπολογιστής\smarthome.db") #connect to local sqlite database
+cursor = conn.cursor() #initialize cursor, used to execute queries
+#conn.execute("PRAGMA foreign_keys = 1") #enforces referential integrity constraints
+
+client = pymongo.MongoClient('localhost', 27017) #connect to local mongodb server
+db = client['smarthome'] #connect to smarthome database
+
+class TableModel(QAbstractTableModel): #defining abstract class which extends the model class used to fill the QTableView below, by including pandas capabilities
 
     def __init__(self, data):
         super(TableModel, self).__init__()
         self._data = data
 
+    #Abstract methods defined so that they allow dataframe structure
     def data(self, index, role):
         if role == Qt.DisplayRole:
             value = self._data.iloc[index.row(), index.column()]
@@ -47,7 +51,7 @@ class TableModel(QAbstractTableModel):
     def columnCount(self, index):
         return self._data.shape[1]
 
-    def headerData(self, section, orientation, role):
+    def headerData(self, section, orientation, role): #used to index rows and columns
         # section is the index of the column/row.
         if role == Qt.DisplayRole:
             if orientation == Qt.Horizontal:
@@ -56,110 +60,108 @@ class TableModel(QAbstractTableModel):
             if orientation == Qt.Vertical:
                 return str(self._data.index[section])
 
-    def sort(self, Ncol, order):
+    def sort(self, Ncol, order): #sorting 
         """Sort table by given column number.
         """
         try:
-            self.layoutAboutToBeChanged.emit()
-            self._data = self._data.sort_values(self._data.columns[Ncol], ascending=not order)
+            self.layoutAboutToBeChanged.emit() #emite signal when header pressed
+            self._data = self._data.sort_values(self._data.columns[Ncol], ascending=not order) #sort data by column selected
             self.layoutChanged.emit()
-        except Exception as e:
+        except Exception as e: #thrown exception when data in column does not allow sorting
             print(e)
 
 
         
-class Window2(QMainWindow):
+class Window2(QMainWindow): #window containing a QTableView with the commands history as data
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Smarthome History")
 
-
-        self.table = QTableView()
-        
+        self.table = QTableView() #initialize table widget        
         sql   = ''' select date_time,username_pragma,eidos,dwmatio,command,command_id,device_id from 
                     ((pragmatopoiei join elegxei on elegxei.command_id_ele = pragmatopoiei.command_id_pragma) a1 
                     join syskeyi on a1.device_id_ele = syskeyi.device_id) a2 
                     join entoli on entoli.command_id = a2.command_id_ele
-                    order by date_time desc '''
+                    order by date_time desc '''#triple join of tables elegxei,syskeyi,entoli,pragmatopoiei to include all necessary data
 
-        cursor.execute(sql)
-        self.commands = cursor.fetchall()
+        cursor.execute(sql) #execute query
+        self.commands = cursor.fetchall() #save the query result
         
-        history = []
+        history = [] #initialaze 2d data array that will be fed in the model
         
         for i in self.commands:
             
-            instance = [i[0],i[1],i[2]+' '+i[3]]
-            appliance_commands = db['appliances'].find({'_id':ObjectId(i[6])})[0]['entoles']
+            instance = [i[0],i[1],i[2]+' '+i[3]] #initialize each row with the first 3 columns (datetime,username,appliance)
+            appliance_commands = db['appliances'].find({'_id':ObjectId(i[6])})[0]['entoles'] #query appliances collection to find the appliance with the specified id
             
-            for j in appliance_commands.keys():
-                if appliance_commands[j]['entolh_id'] == ObjectId(i[4]):
+            for j in appliance_commands.keys(): #iterrate over thiw appliances commands
+                if appliance_commands[j]['entolh_id'] == ObjectId(i[4]): #and once the command with the specified id is found add it to the data row (command column)
                     instance.append(j)
 
-            try:
-                instance.append(db['arxeio_entolwn'].find({"_id":ObjectId('0'*(24-len(str(i[5])))+str(i[5]))})[0]['parametroi'])
-            except:
-                instance.append(0)
-            history.append(instance)
+            instance.append(db['arxeio_entolwn'].find({"_id":ObjectId('0'*(24-len(str(i[5])))+str(i[5]))})[0]['parametroi']) #query arxeio_entolwn collection to find command with the specified command_id
+            history.append(instance) #add row to data
             
         
-        data = DataFrame(history, columns = ['Date/Time', 'Username', 'Appliance','Command','Parameters'])
+        data = DataFrame(history, columns = ['Date/Time', 'Username', 'Appliance','Command','Parameters']) #use data to create dataframe
 
-        self.model = TableModel(data)
-        self.table.setModel(self.model)
+        self.model = TableModel(data) #feed dataframe to model
+        self.table.setModel(self.model) #feed model to table
 
-        self.table.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
+        self.table.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents) #adjust window size to table size
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
 
-        self.table.setSortingEnabled(True)
+        self.table.setSortingEnabled(True) #enable table sorting
         self.setCentralWidget(self.table)
     
 
-class Window(QWidget):
+class Window(QWidget): #main window of the application
     def __init__(self):
         super().__init__()
 
         self.setWindowTitle("Smarthome")
-        cursor.execute("SELECT * FROM syskeyi")
-        self.appliances = cursor.fetchall()
+        
+        cursor.execute("SELECT * FROM syskeyi") #query to get all appliances
+        self.appliances = cursor.fetchall() #save them to appliances variable
+        
         # Create a top-level layout
-        layout = QVBoxLayout()
-        self.setLayout(layout)
+        layout = QVBoxLayout() #top level layout structured as a vertical box
+        self.setLayout(layout) #set it as layout
+
         # Create the stacked layout
-        self.stackedLayout = QStackedLayout()
+        self.stackedLayout = QStackedLayout() #rest of the app is structured as a stacked layout, many layouts one on top of the other with the ability to switch between them
         
         # Create the first page (select profile page)
-        self.page1 = QWidget()
-        self.page1Layout = QFormLayout()
+        self.page1 = QWidget() #initialize the first page
+        self.page1Layout = QFormLayout() #specify its layout
 
-        self.new_button = QPushButton('Create new profile')
+        self.new_button = QPushButton('Create new profile') #button, when pressed switches to create profile page
         self.page1Layout.addRow(self.new_button)
-        self.new_button.clicked.connect(self.newProfile)
+        self.new_button.clicked.connect(self.newProfile) 
         
-        cursor.execute("SELECT * FROM 'profil_xristi';")
-        self.profiles = cursor.fetchall()
+        cursor.execute("SELECT * FROM 'profil_xristi';") #query to get all profiles
+        self.profiles = cursor.fetchall() # save the to profiles variable
         
-        for i in self.profiles:
+        for i in self.profiles: #for each profile create a button, switches to profile actions pages when pressed
             self.button = QPushButton(i[0])
             self.page1Layout.addRow(self.button)
             self.button.clicked.connect(self.selectProfile)
 
             
-        self.page1.setLayout(self.page1Layout)
-        self.stackedLayout.addWidget(self.page1)
+        self.page1.setLayout(self.page1Layout) 
+        self.stackedLayout.addWidget(self.page1) #add layout to StackedLayout
 
         
         # Create the second page (enter password page)
-        self.page2 = QWidget()
+        self.page2 = QWidget() #As above, those specific lines will be similar for each page 
         self.page2Layout = QFormLayout()
 
-        self.password_field = QLineEdit()
+        self.password_field = QLineEdit() #LineEdit where user can type password
         self.page2Layout.addRow(self.password_field)
 
-        self.label = QLabel()
+        self.label = QLabel() #Label used to show messages to user when password is incorrect
         self.page2Layout.addRow(self.label)
         
-        self.button = QPushButton('Enter')
+        self.button = QPushButton('Enter') #button, enters password
         self.page2Layout.addRow(self.button)
         self.button.clicked.connect(self.enterPassword)
         
@@ -167,35 +169,35 @@ class Window(QWidget):
         self.stackedLayout.addWidget(self.page2)
 
         # Create the third page as a new stacked layout(create new profile page)
-        self.newProfilePage = QWidget()
+        self.newProfilePage = QWidget() #the third page is structured as a second stacked layout, since both primary and secondary profile creations share actions
         self.newProfilePageLayout = QVBoxLayout()
         
         
-        self.pageCombo = QComboBox()
+        self.pageCombo = QComboBox() #ComboBox used to specify if user is creating a primary or secondary profile
         self.pageCombo.addItems(["Primary Profile", "Secondary Profile"])
         self.pageCombo.activated.connect(self.switchPage)
 
-        self.new_username = QLineEdit()
+        self.new_username = QLineEdit() #user enters desired username
         self.new_username.setPlaceholderText("Enter username")
-        self.new_password = QLineEdit()
+        self.new_password = QLineEdit() #user enters desired password
         self.new_password.setPlaceholderText("Enter password")
-        self.new_alternative_password = QLineEdit()
+        self.new_alternative_password = QLineEdit() #user enters desired alternative password
         self.new_alternative_password.setPlaceholderText("Enter alternative password")
-        self.isPublic = QCheckBox("Public")
-        self.isMulti = QCheckBox("Multiple users")
+        self.isPublic = QCheckBox("Public") #checkbox, new profile is public when checked
+        self.isMulti = QCheckBox("Multiple users") #checkbox, new profile supports multiple users when checked
 
-        self.cancel_new_profile = QPushButton('Cancel')
+        self.cancel_new_profile = QPushButton('Cancel') #cancel button, returns user to previous panel when pressed
         self.cancel_new_profile.clicked.connect(self.cancel_new)
         self.error_label = QLabel('')
 
         
-        self.stackedLayout2 = QStackedLayout()
+        self.stackedLayout2 = QStackedLayout() #stacked layout portion of third page
         
         #page 1
         self.page3 = QWidget()
         self.page3Layout = QFormLayout()
 
-        self.primary_profile_button = QPushButton('Enter')
+        self.primary_profile_button = QPushButton('Enter') #nothing extra, besides enter button that saves the new primary profile
         self.page3Layout.addRow(self.primary_profile_button)
         self.primary_profile_button.clicked.connect(self.createPrimaryProfile)
         
@@ -207,10 +209,10 @@ class Window(QWidget):
         self.page4 = QWidget()
         self.page4Layout = QFormLayout()
 
-        cursor.execute("SELECT * FROM 'proteuon_profil';")
+        cursor.execute("SELECT * FROM 'proteuon_profil';") #query returning all primary profiles
         masterprofiles = cursor.fetchall()
         
-        self.master_profiles = QComboBox()
+        self.master_profiles = QComboBox() #combo box containing all primary profile usernames
         self.master_profiles.addItems([i[0] for i in masterprofiles])
         self.page4Layout.addRow('Select master profile',self.master_profiles)
         
@@ -218,10 +220,10 @@ class Window(QWidget):
         self.page4Layout.addRow(self.secondary_profile_button)
         self.secondary_profile_button.clicked.connect(self.createSecondaryProfile)
         
-        self.page4.setLayout(self.page4Layout)
+        self.page4.setLayout(self.page4Layout) # add stacked layout 2 to page 3 of stacked layout 1
         self.stackedLayout2.addWidget(self.page4)
 
-        self.newProfilePage.setLayout(self.newProfilePageLayout)
+        self.newProfilePage.setLayout(self.newProfilePageLayout) #add all widgets of top level layout of page 3
         self.newProfilePageLayout.addWidget(self.pageCombo)
         self.newProfilePageLayout.addWidget(self.new_username)
         self.newProfilePageLayout.addWidget(self.new_password)
@@ -239,7 +241,7 @@ class Window(QWidget):
         self.page5 = QWidget()
         self.page5Layout = QFormLayout()
 
-
+        #primary profiles have 4 available actions, manage restriction,use appliances,show consumption and show history, each of these button switches to corresponding action page
         self.manage_restrictions_button = QPushButton('Manage restrictions')
         self.page5Layout.addRow(self.manage_restrictions_button)
         self.manage_restrictions_button.clicked.connect(self.manage_restrictions)
@@ -256,6 +258,10 @@ class Window(QWidget):
         self.page5Layout.addRow(self.history_button)
         self.history_button.clicked.connect(self.show_history)
 
+        self.delete_primary_button = QPushButton('Delete Profile')
+        self.page5Layout.addRow(self.delete_primary_button)
+        self.delete_primary_button.clicked.connect(self.delete_profile)
+
         self.exit_primary = QPushButton('Exit')
         self.page5Layout.addRow(self.exit_primary)
         self.exit_primary.clicked.connect(self.homepage)
@@ -265,7 +271,7 @@ class Window(QWidget):
         self.stackedLayout.addWidget(self.page5)
 
         # Create the fifth page (select action page for secondary profiles)
-        self.page6 = QWidget()
+        self.page6 = QWidget() #a secondary profile can only use appliances, each profile has access to different appliances, therefore buttons are added afterwards when the profile is specified
         self.page6Layout = QFormLayout()
 
         self.page6.setLayout(self.page6Layout)
@@ -383,6 +389,11 @@ class Window(QWidget):
                         self.page6Layout.addRow(self.appliance_button)
                         self.appliance_button.clicked.connect(self.show_commands)
 
+
+                self.delete_secondary_button = QPushButton('Delete Profile')
+                self.page6Layout.addRow(self.delete_secondary_button)
+                self.delete_secondary_button.clicked.connect(self.delete_profile)
+        
                 self.exit_secondary = QPushButton('Exit')
                 self.page6Layout.addRow(self.exit_secondary)
                 self.exit_secondary.clicked.connect(self.homepage)
@@ -457,8 +468,9 @@ class Window(QWidget):
                     self.cancel_new()
                     self.error_label.setText('')
                     
-                except:
-                    elf.error_label.setText('username already exists')
+                except Exception as e:
+                    print(e)
+                    self.error_label.setText('username already exists')
                     
             else:
                 self.error_label.setText('Username,password fields must be filled')
@@ -617,8 +629,8 @@ class Window(QWidget):
               VALUES(last_insert_rowid(),'{self.appliance_id}') '''
         cursor.execute(sql)
 
-        sql=f''' INSERT INTO pragmatopoiei(username_pragma,command_id_pragma,date_time)
-              VALUES('{self.profile}',last_insert_rowid(),CURRENT_TIMESTAMP) '''
+        sql=f''' INSERT INTO pragmatopoiei(username_pragma,command_id_pragma,smart_name,date_time,IP_Address)
+              VALUES('{self.profile}',last_insert_rowid(),'{socket.gethostname()}',CURRENT_TIMESTAMP,'{socket.gethostbyname(socket.gethostname())}') '''
         cursor.execute(sql)
         
         #reinitialize appliances to reset energi row
@@ -736,6 +748,52 @@ class Window(QWidget):
     def show_history(self):
         self.w = Window2()
         self.w.show()
+
+    def delete_profile(self):
+        conn.execute("PRAGMA foreign_keys = 1") #enforces referential integrity constraints
+        cursor.execute(f'''DELETE FROM profil_xristi WHERE username = '{self.profile}' ''')
+        conn.execute("PRAGMA foreign_keys = 0")
+        conn.commit()
+        
+        sql = '''UPDATE parexei_dikaiwmata
+            SET primary_username=(CASE
+                    WHEN (SELECT count(username_pro) 
+                            FROM proteuon_profil
+                            ORDER BY username_pro )>0 
+                            THEN (SELECT username_pro 
+                                    FROM proteuon_profil 
+                                    ORDER BY username_pro limit 1)
+                    ELSE NULL
+            END)
+            where primary_username IS NULL'''
+        conn.execute(sql)
+
+        sql = '''DELETE FROM profil_xristi
+                WHERE username  IN 
+                  (
+                    SELECT secondary_username 
+                    FROM parexei_dikaiwmata As B
+                    Where B.primary_username IS NULL
+                   )'''
+
+        conn.execute("PRAGMA foreign_keys = 1")
+        conn.execute(sql)
+        conn.execute("PRAGMA foreign_keys = 0")
+        conn.commit()
+
+        #reorganize home page buttons
+        for i in reversed(range(1,self.page1Layout.count())): 
+            self.page1Layout.itemAt(i).widget().setParent(None)
+
+        cursor.execute("SELECT * FROM 'profil_xristi';") 
+        self.profiles = cursor.fetchall()
+        
+        for i in self.profiles: 
+            self.button = QPushButton(i[0])
+            self.page1Layout.addRow(self.button)
+            self.button.clicked.connect(self.selectProfile)
+            
+        self.stackedLayout.setCurrentIndex(0)
        
 
 if __name__ == "__main__":
@@ -748,4 +806,3 @@ if __name__ == "__main__":
     window = Window()
     window.show()
     sys.exit(app.exec_())
-
