@@ -7,3 +7,5 @@ pymongo<br/>
 bson<br/> 
 PyQt5<br/> 
 Pandas
+
+![Screenshot](flowchart.png)
