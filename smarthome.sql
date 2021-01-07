@@ -1,64 +1,64 @@
-CREATE TABLE  "deutereuon_profil" (
+CREATE TABLE  "Δευτερεύον_προφίλ" (
 	"username_de"	varchar(30) NOT NULL,
 	PRIMARY KEY("username_de"),
-	FOREIGN KEY("username_de") REFERENCES "profil_xristi"("username") ON DELETE CASCADE
+	FOREIGN KEY("username_de") REFERENCES "Προφίλ χρήστη"("username") ON DELETE CASCADE ON UPDATE CASCADE
 );
-CREATE TABLE  "elegxei" (
-	"command_id_ele"	varchar(255) NOT NULL,
-	"device_id_ele"	varchar(255) NOT NULL,
-	PRIMARY KEY("command_id_ele"),
-	FOREIGN KEY("device_id_ele") REFERENCES "syskeyi"("device_id"),
-	FOREIGN KEY("command_id_ele") REFERENCES "entoli"("command_id") ON DELETE CASCADE
+CREATE TABLE  "Ελέγχει" (
+	"command_id_ελέγχει"	integer NOT NULL,
+	"device_id_ελέγχει"	varchar(30) NOT NULL,
+	PRIMARY KEY("command_id_ελέγχει"),
+	FOREIGN KEY("command_id_ελέγχει") REFERENCES "Εντολή"("command_id") ON DELETE CASCADE ON UPDATE CASCADE,
+	FOREIGN KEY("device_id_ελέγχει") REFERENCES "Συσκευή"("device_id")  ON DELETE SET NULL ON UPDATE CASCADE
 );
-CREATE TABLE  "entoli" (
+CREATE TABLE  "Εντολή" (
 	"command_id"	integer,
-	"command"	varchar(255) NOT NULL,
+	"εντολή_id"	varchar(30) NOT NULL,
 	PRIMARY KEY("command_id" AUTOINCREMENT)
 );
-CREATE TABLE  "exei_prosvasi" (
-	"username_prosvasis"	varchar(30) NOT NULL,
-	"device_id"	varchar(30) NOT NULL,
-	PRIMARY KEY("username_prosvasis","device_id"),
-	FOREIGN KEY("device_id") REFERENCES "syskeyi"("device_id"),
-	FOREIGN KEY("username_prosvasis") REFERENCES "deutereuon_profil"("username_de") ON DELETE CASCADE
+CREATE TABLE  "Έχει_πρόσβαση" (
+	"username_πρόσβασης"	varchar(30) NOT NULL,
+	"device_id_πρόσβασης"	varchar(30) NOT NULL,
+	PRIMARY KEY("username_πρόσβασης","device_id_πρόσβασης"),
+	FOREIGN KEY("username_πρόσβασης") REFERENCES "Δευτερεύον προφίλ"("username_de") ON DELETE CASCADE ON UPDATE CASCADE,
+	FOREIGN KEY("device_id_πρόσβασης") REFERENCES "Συσκευή"("device_id") ON DELETE CASCADE ON UPDATE CASCADE
 );
-CREATE TABLE  "parexei_dikaiwmata" (
-	"primary_username"	varchar(30),
+CREATE TABLE  "Παρέχει_δικαιώματα" (
+	"primary_username"	varchar(30) ,
 	"secondary_username"	varchar(30) NOT NULL,
 	PRIMARY KEY("primary_username","secondary_username"),
-	FOREIGN KEY("secondary_username") REFERENCES "deutereuon_profil"("username_de") ON DELETE CASCADE,
-	FOREIGN KEY("primary_username") REFERENCES "proteuon_profil"("username_pro") ON DELETE SET NULL
+	FOREIGN KEY("primary_username") REFERENCES "Πρωτεύον προφίλ"("username_pro") ON DELETE SET NULL ON UPDATE CASCADE,
+	FOREIGN KEY("secondary_username") REFERENCES "Δευτερεύον προφίλ"("username_de") ON DELETE CASCADE ON UPDATE CASCADE
 );
-CREATE TABLE  "profil_xristi" (
+CREATE TABLE  "Προφίλ_χρήστη" (
 	"username"	VARCHAR(30) NOT NULL,
-	"kwdikos"	varchar(30) NOT NULL,
+	"password"	varchar(30) NOT NULL,
 	"alternative_password"	varchar(30),
-	"dimosio"	boolean,
-	"pollaplwn_xriston"	boolean,
+	"δημόσιο"	boolean,
+	"πολλαπλών_χρηστών"	boolean,
 	PRIMARY KEY("username")
 );
-CREATE TABLE  "proteuon_profil" (
+CREATE TABLE  "Πρωτεύον_προφίλ" (
 	"username_pro"	varchar(30) NOT NULL,
 	PRIMARY KEY("username_pro"),
-	FOREIGN KEY("username_pro") REFERENCES "profil_xristi"("username") ON DELETE CASCADE
+	FOREIGN KEY("username_pro") REFERENCES "Προφίλ χρήστη"("username") ON DELETE CASCADE ON UPDATE CASCADE
 );
-CREATE TABLE  "syskeyi" (
-	"device_id"	varchar(50) NOT NULL,
-	"eidos"	varchar(50) NOT NULL,
-	"dwmatio"	varchar(30),
-	"energi"	boolean,
-	"kwh"	real,
+CREATE TABLE  "Συσκευή" (
+	"device_id"	varchar(30) NOT NULL,
+	"είδος"	varchar(30) NOT NULL,
+	"δωμάτιο"	varchar(30) NOT NULL,
+	"ενεργή"	boolean NOT NULL,
+	"KWh"	real NOT NULL,
 	PRIMARY KEY("device_id")
 );
-CREATE TABLE  "pragmatopoiei" (
-	"username_pragma"	varchar(30),
-	"command_id_pragma"	varchar(255) NOT NULL,
-	"smart_name"	varchar(30),
-	"date_time"	datetime NOT NULL,
+CREATE TABLE "Πραγματοποιεί" (
+	"username_πραγματοποιεί"	varchar(30),
+	"command_id_πραγματοποιεί"	int NOT NULL,
+	"όνομα_συσκευής_control"	varchar(30),
+	"ημερομηνία/ώρα"	datetime NOT NULL,
 	"IP_Address"	varchar(15),
-	PRIMARY KEY("command_id_pragma"),
-	FOREIGN KEY("command_id_pragma") REFERENCES "entoli"("command_id") ON DELETE SET NULL,
-	FOREIGN KEY("username_pragma") REFERENCES "profil_xristi"("username") ON DELETE SET NULL
+	PRIMARY KEY("command_id_πραγματοποιεί"),
+	FOREIGN KEY("command_id_πραγματοποιεί") REFERENCES "Εντολή"("command_id") ON DELETE CASCADE ON UPDATE CASCADE,
+	FOREIGN KEY("username_πραγματοποιεί") REFERENCES "Προφίλ χρήστη"("username") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 
