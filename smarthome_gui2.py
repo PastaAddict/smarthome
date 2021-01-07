@@ -78,11 +78,11 @@ class Window2(QMainWindow): #window containing a QTableView with the commands hi
         self.setWindowTitle("Smarthome History")
 
         self.table = QTableView() #initialize table widget        
-        sql   = ''' select date_time,username_pragma,eidos,dwmatio,command,command_id,device_id from 
-                    ((pragmatopoiei join elegxei on elegxei.command_id_ele = pragmatopoiei.command_id_pragma) a1 
-                    join syskeyi on a1.device_id_ele = syskeyi.device_id) a2 
-                    join entoli on entoli.command_id = a2.command_id_ele
-                    order by date_time desc '''#triple join of tables elegxei,syskeyi,entoli,pragmatopoiei to include all necessary data
+        sql   = ''' select ημερομηνία_ώρα,username_πραγματοποιεί,είδος,δωμάτιο,εντολή_id,command_id,device_id from 
+                    ((Πραγματοποιεί join Ελέγχει on Ελέγχει.command_id_ελέγχει = Πραγματοποιεί.command_id_πραγματοποιεί) a1 
+                    join Συσκευή on a1.device_id_ελέγχει = Συσκευή.device_id) a2 
+                    join Εντολή on Εντολή.command_id = a2.command_id_ελέγχει
+                    order by ημερομηνία_ώρα desc '''#triple join of tables Ελέγχει,Συσκευή,Εντολή,Πραγματοποιεί to include all necessary data
 
         cursor.execute(sql) #execute query
         self.commands = cursor.fetchall() #save the query result
@@ -120,7 +120,7 @@ class Window(QWidget): #main window of the application
 
         self.setWindowTitle("Smarthome")
         
-        cursor.execute("SELECT * FROM syskeyi") #query to get all appliances
+        cursor.execute("SELECT * FROM Συσκευή") #query to get all appliances
         self.appliances = cursor.fetchall() #save them to appliances variable
         
         # Create a top-level layout
@@ -138,7 +138,7 @@ class Window(QWidget): #main window of the application
         self.page1Layout.addRow(self.new_button)
         self.new_button.clicked.connect(self.newProfile) 
         
-        cursor.execute("SELECT * FROM 'profil_xristi';") #query to get all profiles
+        cursor.execute("SELECT * FROM 'Προφίλ_χρήστη';") #query to get all profiles
         self.profiles = cursor.fetchall() # save the to profiles variable
         
         for i in self.profiles: #for each profile create a button, switches to profile actions pages when pressed
@@ -209,7 +209,7 @@ class Window(QWidget): #main window of the application
         self.page4 = QWidget()
         self.page4Layout = QFormLayout()
 
-        cursor.execute("SELECT * FROM 'proteuon_profil';") #query returning all primary profiles
+        cursor.execute("SELECT * FROM 'Πρωτεύον_προφίλ';") #query returning all primary profiles
         masterprofiles = cursor.fetchall()
         
         self.master_profiles = QComboBox() #combo box containing all primary profile usernames
@@ -357,21 +357,21 @@ class Window(QWidget): #main window of the application
 
     def enterPassword(self): #binded to enter button in enter password page
         password = self.page2Layout.itemAt(0).widget().text()
-        cursor.execute(f"SELECT kwdikos,alternative_password,dimosio FROM 'profil_xristi' WHERE username = '{self.profile}' ;") #self.profile contains the profile whom password we want to enter
+        cursor.execute(f"SELECT password,alternative_password,δημόσιο FROM 'Προφίλ_χρήστη' WHERE username = '{self.profile}' ;") #self.profile contains the profile whom password we want to enter
         correct_password = cursor.fetchall() #with this sql query we get alla the necessary information, such as paswwords and wether it's a public profile
         
         if password == correct_password[0][0] or password == correct_password[0][1] or correct_password[0][2]: #if the user enters the correct password, or if the profile is public proceed
             self.label.setText('') #password is correct, no warnings display
             
-            cursor.execute(f"SELECT * FROM 'proteuon_profil' WHERE username_pro = '{self.profile}' ;") #query to find wether the current profile is primary or secondart
+            cursor.execute(f"SELECT * FROM 'Πρωτεύον_προφίλ' WHERE username_pro = '{self.profile}' ;") #query to find wether the current profile is primary or secondart
             self.isPrimary = cursor.fetchall()
             
             if self.isPrimary: #if it's primary switch to primary profile actions page
                 self.stackedLayout.setCurrentIndex(3)
                 
             else:
-                sql = f'''select exei_prosvasi.device_id,eidos,dwmatio,energi from exei_prosvasi join syskeyi on syskeyi.device_id=exei_prosvasi.device_id
-                and username_prosvasis='{self.profile}';''' #otherwise the profile is secondary, therefore we switch to secondary profile actions page
+                sql = f'''select Έχει_πρόσβαση.device_id_πρόσβασης,είδος,δωμάτιο,ενεργή from Έχει_πρόσβαση join Συσκευή on Συσκευή.device_id=Έχει_πρόσβαση.device_id_πρόσβασης
+                and username_πρόσβασης='{self.profile}';''' #otherwise the profile is secondary, therefore we switch to secondary profile actions page
                 cursor.execute(sql)                         #which contains only the appliances that are allowed on the current profile, this sql query return the allowed appliances
                 self.allowed_appliances = cursor.fetchall()
 
@@ -410,11 +410,11 @@ class Window(QWidget): #main window of the application
     def createPrimaryProfile(self): #action binded to enter button create primary profile page
         if self.new_username.text()!='' and ((self.new_password.text()!='') ^ self.isPublic.isChecked()): #chech wether text edits are empty, allow password to be empty if the profile is public
             try:
-                sql=f''' INSERT INTO proteuon_profil(username_pro)
+                sql=f''' INSERT INTO Πρωτεύον_προφίλ(username_pro)
                     VALUES('{self.new_username.text()}') '''
                 cursor.execute(sql) #sql query to enter new profile in primary profile table
 
-                cursor.execute('''INSERT INTO profil_xristi(username,kwdikos,alternative_password,dimosio,pollaplwn_xriston)
+                cursor.execute('''INSERT INTO Προφίλ_χρήστη(username,password,alternative_password,δημόσιο,πολλαπλών_χρηστών)
                     VALUES(?,?,?,?,?)''',(self.new_username.text(),self.new_password.text(),None if self.new_alternative_password.text()=='' else self.new_alternative_password.text(),self.isPublic.isChecked(),self.isMulti.isChecked()))
                 #query to enter new profile in user profiles table, if no alternative password enter NULL instead of empty string
                 conn.commit() #commit changes to database
@@ -428,6 +428,7 @@ class Window(QWidget): #main window of the application
                 self.cancel_new() #switch to homepage
                 self.error_label.setText('') #clear all error labels
             except Exception as e: #throw exception when unique key constrain is violated
+                print(e)
                 self.error_label.setText('username already exists')
         else:
             self.error_label.setText('Username,password fields must be filled') #display message when not all fields are filled
@@ -439,15 +440,15 @@ class Window(QWidget): #main window of the application
         if self.master_profiles.currentText()!='': #if no primary profiles exist, user cannot create secondary profile
             if self.new_username.text()!='' and ((self.new_password.text()!='') ^ self.isPublic.isChecked()): #same constraints as primary profiles
                 try:
-                    sql=f''' INSERT INTO deutereuon_profil(username_de)
+                    sql=f''' INSERT INTO Δευτερεύον_προφίλ(username_de)
                         VALUES('{self.new_username.text()}') '''
                     cursor.execute(sql) #insert new profile to secondary profiles table
 
-                    sql=f''' INSERT INTO parexei_dikaiwmata(primary_username,secondary_username)
+                    sql=f''' INSERT INTO Παρέχει_δικαιώματα(primary_username,secondary_username)
                           VALUES('{self.master_profiles.currentText()}','{self.new_username.text()}') '''
                     cursor.execute(sql) #insert new profile dependency to parexei dikaiwmata table
 
-                    cursor.execute('''INSERT INTO profil_xristi(username,kwdikos,alternative_password,dimosio,pollaplwn_xriston)
+                    cursor.execute('''INSERT INTO Προφίλ_χρήστη(username,password,alternative_password,δημόσιο,πολλαπλών_χρηστών)
                     VALUES(?,?,?,?,?)''',(self.new_username.text(),self.new_password.text(),None if self.new_alternative_password.text()=='' else self.new_alternative_password.text(),self.isPublic.isChecked(),self.isMulti.isChecked()))
                     #insert new profile to user profilew table
 
@@ -471,7 +472,7 @@ class Window(QWidget): #main window of the application
 
     def manage_restrictions(self): #binded to manage restrictions button in primary profile actions page
         
-        sql = f'''SELECT secondary_username FROM 'parexei_dikaiwmata' 
+        sql = f'''SELECT secondary_username FROM 'Παρέχει_δικαιώματα' 
         WHERE primary_username='{self.profile}';''' #sql query that returns all child profiles of the specified primary profile
         cursor.execute(sql)
         self.childprofiles = cursor.fetchall() #save child profiles to childprofiles variable
@@ -481,8 +482,8 @@ class Window(QWidget): #main window of the application
 
         if self.childprofiles:
             for i in range(2,2+len(self.appliances)): #first 2 widgets in manage restrictions page are label and combobox, followed by a checkbox for each appliance
-                sql = f'''SELECT * FROM exei_prosvasi 
-                    WHERE username_prosvasis='{self.childprofiles[0][0]}' and device_id='{self.appliances[i-2][0]}';'''
+                sql = f'''SELECT * FROM Έχει_πρόσβαση 
+                    WHERE username_πρόσβασης='{self.childprofiles[0][0]}' and device_id_πρόσβασης='{self.appliances[i-2][0]}';'''
                 cursor.execute(sql) #sql query that returns non empty if profile has access to specified appliance
                 has_access = cursor.fetchall()
                 if has_access: #if non empty set checkbox to checked
@@ -494,8 +495,8 @@ class Window(QWidget): #main window of the application
 
     def child_restrictions(self): #binded to combo box selection
         for i in range(2,2+len(self.appliances)): #queries restrictions for the new profile and checks checkboxes accordingly
-                sql = f'''SELECT * FROM exei_prosvasi 
-                    WHERE username_prosvasis='{self.child_profiles.currentText()}' and device_id='{self.appliances[i-2][0]}';'''
+                sql = f'''SELECT * FROM Έχει_πρόσβαση 
+                    WHERE username_πρόσβασης='{self.child_profiles.currentText()}' and device_id_πρόσβασης='{self.appliances[i-2][0]}';'''
                 cursor.execute(sql)
                 has_access = cursor.fetchall()
                 if has_access:
@@ -506,18 +507,18 @@ class Window(QWidget): #main window of the application
     def apply_restrictions(self): #binded to apply restrictions button
         if self.child_profiles.currentText()!='': #if there exist child profiles for current primary profile
             for i in range(2,2+len(self.appliances)):
-                sql = f'''SELECT * FROM exei_prosvasi 
-                        WHERE username_prosvasis='{self.child_profiles.currentText()}' and device_id='{self.appliances[i-2][0]}';'''
+                sql = f'''SELECT * FROM Έχει_πρόσβαση 
+                        WHERE username_πρόσβασης='{self.child_profiles.currentText()}' and device_id_πρόσβασης='{self.appliances[i-2][0]}';'''
                 cursor.execute(sql) #query to check if current child profile has access to specified appliance
                 has_access = cursor.fetchall()
                 if has_access: #if it does
                     if not self.page7Layout.itemAt(i).widget().isChecked(): #if checkbox of this appliance is not checked
-                        sql=f''' DELETE FROM exei_prosvasi
-                        WHERE username_prosvasis='{self.child_profiles.currentText()}' and device_id='{self.appliances[i-2][0]}';'''
+                        sql=f''' DELETE FROM Έχει_πρόσβαση
+                        WHERE username_πρόσβασης='{self.child_profiles.currentText()}' and device_id_πρόσβασης='{self.appliances[i-2][0]}';'''
                         cursor.execute(sql) #remove the appliance rights from exei prosvasi table
                 else:
                     if self.page7Layout.itemAt(i).widget().isChecked(): #otherwise insert it 
-                        sql=f''' INSERT INTO exei_prosvasi(username_prosvasis,device_id)
+                        sql=f''' INSERT INTO Έχει_πρόσβαση(username_πρόσβασης,device_id)
                         VALUES('{self.child_profiles.currentText()}','{self.appliances[i-2][0]}') '''
                         cursor.execute(sql)
 
@@ -562,9 +563,9 @@ class Window(QWidget): #main window of the application
             self.entoles = db['appliances'].find({'_id':ObjectId(self.appliance_id)})[0]['entoles']
 
         if self.appliance_isActive: #if the specified appliance is currently active
-            self.entoles = {i:self.entoles[i] for i in self.entoles if i!='anapse'} #self.entoles will contain all commands except for turn on command
+            self.entoles = {i:self.entoles[i] for i in self.entoles if i!='Turn on'} #self.entoles will contain all commands except for turn on command
         else:
-            self.entoles = {i:self.entoles[i] for i in self.entoles if i=='anapse'} #otherwise, contains only turn on command
+            self.entoles = {i:self.entoles[i] for i in self.entoles if i=='Turn on'} #otherwise, contains only turn on command
         
         for i in reversed(range(self.page9Layout.count())): #delete all previous widgets in appliance commands page, existing due to previously using another device
             self.page9Layout.itemAt(i).widget().setParent(None)
@@ -598,13 +599,13 @@ class Window(QWidget): #main window of the application
         entoli_name = list(self.entoles.keys())[cntr] #use that index to find theat command
         entoli = self.entoles[entoli_name]
 
-        if entoli_name == 'anapse': #if the command is turn on
-            sql=f''' UPDATE syskeyi SET energi=true 
+        if entoli_name == 'Turn on': #if the command is turn on
+            sql=f''' UPDATE Συσκευή SET ενεργή=true 
                 WHERE device_id = '{self.appliance_id}' '''
             cursor.execute(sql) #sql query to set appliance state as on in appliance table
 
-        elif entoli_name == 'sbhse': #otherwise set it to off
-            sql=f''' UPDATE syskeyi SET energi=false
+        elif entoli_name == 'Turn off': #otherwise set it to off
+            sql=f''' UPDATE Συσκευή SET ενεργή=false
                 WHERE device_id = '{self.appliance_id}' '''
             cursor.execute(sql)
 
@@ -612,24 +613,24 @@ class Window(QWidget): #main window of the application
             
         _id = str(entoli['entolh_id']) #find the command id from mongo db appliances collection
         
-        sql=f''' INSERT INTO entoli(command)
+        sql=f''' INSERT INTO Εντολή(εντολή_id)
               VALUES('{_id}') '''
-        cursor.execute(sql) #sql query to insert command in commands table
+        cursor.execute(sql) #sql query to insert εντολή_id in commands table
 
-        sql=f''' INSERT INTO elegxei(command_id_ele,device_id_ele)
+        sql=f''' INSERT INTO Ελέγχει(command_id_ελέγχει,device_id_ελέγχει)
               VALUES(last_insert_rowid(),'{self.appliance_id}') '''
         cursor.execute(sql) #sql query to insert command and appliance to controls table
 
-        sql=f''' INSERT INTO pragmatopoiei(username_pragma,command_id_pragma,smart_name,date_time,IP_Address)
+        sql=f''' INSERT INTO Πραγματοποιεί(username_πραγματοποιεί,command_id_πραγματοποιεί,όνομα_συσκευής_control,ημερομηνία_ώρα,IP_Address)
               VALUES('{self.profile}',last_insert_rowid(),'{socket.gethostname()}',CURRENT_TIMESTAMP,'{socket.gethostbyname(socket.gethostname())}') '''
         cursor.execute(sql) #insert everything to realize table
         
         #reinitialize appliances to reset appliance state column for both appliances and allowed appliances sets
-        cursor.execute("SELECT * FROM syskeyi")
+        cursor.execute("SELECT * FROM Συσκευή")
         self.appliances = cursor.fetchall()
 
-        sql = f'''select exei_prosvasi.device_id,eidos,dwmatio,energi from exei_prosvasi join syskeyi on syskeyi.device_id=exei_prosvasi.device_id
-                and username_prosvasis='{self.profile}';'''
+        sql = f'''select Έχει_πρόσβαση.device_id_πρόσβασης,είδος,δωμάτιο,ενεργή from Έχει_πρόσβαση join Συσκευή on Συσκευή.device_id=Έχει_πρόσβαση.device_id_πρόσβασης
+                and username_πρόσβασης='{self.profile}';'''
         cursor.execute(sql)
         self.allowed_appliances = cursor.fetchall()
         
@@ -705,22 +706,22 @@ class Window(QWidget): #main window of the application
                 self.page10Layout.itemAt(i).widget().setParent(None)
                 
         for i in self.appliances: #for every appliance
-            anapse_id = str(db['appliances'].find({'_id':ObjectId(i[0])})[0]['entoles']['anapse']['entolh_id']) #find turn on and turn off ids
-            sbhse_id = str(db['appliances'].find({'_id':ObjectId(i[0])})[0]['entoles']['sbhse']['entolh_id'])
+            anapse_id = str(db['appliances'].find({'_id':ObjectId(i[0])})[0]['entoles']['Turn on']['entolh_id']) #find turn on and turn off ids
+            sbhse_id = str(db['appliances'].find({'_id':ObjectId(i[0])})[0]['entoles']['Turn off']['entolh_id'])
     
-            sql =   f'''select device_id_ele,
+            sql =   f'''select device_id_ελέγχει,
                         case 
-                        when energi=0 then sum(opened_for)*kwh
-                        else sum(opened_for)*kwh + (julianday(CURRENT_TIMESTAMP) - julianday(max(opened_on)))* 24*kwh end total_consumption from
+                        when ενεργή=0 then sum(opened_for)*KWh
+                        else sum(opened_for)*KWh + (julianday(CURRENT_TIMESTAMP) - julianday(max(opened_on)))* 24*KWh end total_consumption from
                         (select *,(julianday(closed_on) - julianday(opened_on))* 24  as opened_for  from
-                        (select command_id,command,date_time as opened_on,device_id_ele,
-                        lead (date_time) over(order by date_time) closed_on
+                        (select command_id,εντολή_id,ημερομηνία_ώρα as opened_on,device_id_ελέγχει,
+                        lead (ημερομηνία_ώρα) over(order by ημερομηνία_ώρα) closed_on
                         from
-                        (select command_id,command,date_time,device_id_ele from(select * from pragmatopoiei join elegxei on pragmatopoiei.command_id_pragma = elegxei.command_id_ele) e1
-                        join entoli on entoli.command_id = e1.command_id_ele
-                        where device_id_ele = '{i[0]}' and (command = '{anapse_id}' or command = '{sbhse_id}')))
-                        where command = '{anapse_id}') join syskeyi on device_id_ele = syskeyi.device_id
-                        group by command'''
+                        (select command_id,εντολή_id,ημερομηνία_ώρα,device_id_ελέγχει from(select * from Πραγματοποιεί join Ελέγχει on Πραγματοποιεί.command_id_πραγματοποιεί = Ελέγχει.command_id_ελέγχει) e1
+                        join Εντολή on Εντολή.command_id = e1.command_id_ελέγχει
+                        where device_id_ελέγχει = '{i[0]}' and (εντολή_id = '{anapse_id}' or εντολή_id = '{sbhse_id}')))
+                        where εντολή_id = '{anapse_id}') join Συσκευή on device_id_ελέγχει = Συσκευή.device_id
+                        group by εντολή_id'''
             cursor.execute(sql) #sql query that returns the KW consumption of the specified appliance
             consumption = cursor.fetchall()
             self.clabel = QLabel() #create a label that will display the appliance's name and consumpion
@@ -742,28 +743,28 @@ class Window(QWidget): #main window of the application
 
     def delete_profile(self): #binded to delete profile button in profiles actions pages (both primary and secondary)
         conn.execute("PRAGMA foreign_keys = 1") #enforces referential integrity constraints
-        cursor.execute(f'''DELETE FROM profil_xristi WHERE username = '{self.profile}' ''') #delete 
+        cursor.execute(f'''DELETE FROM Προφίλ_χρήστη WHERE username = '{self.profile}' ''') #delete 
         conn.execute("PRAGMA foreign_keys = 0") #restore default constraints to allow inserts and updates
         conn.commit()
         
-        sql = '''UPDATE parexei_dikaiwmata
+        sql = '''UPDATE Παρέχει_δικαιώματα
             SET primary_username=(CASE
                     WHEN (SELECT count(username_pro) 
-                            FROM proteuon_profil
+                            FROM Πρωτεύον_προφίλ
                             ORDER BY username_pro )>0 
                             THEN (SELECT username_pro 
-                                    FROM proteuon_profil 
+                                    FROM Πρωτεύον_προφίλ 
                                     ORDER BY username_pro limit 1)
                     ELSE NULL
             END)
             where primary_username IS NULL'''#from parexei dikaiwmata table find all rows with NULL primary_username due to primary profile deletion
         conn.execute(sql)                    #if another primary profile exists transfer secondary profile control to this new primary profile, otherwise None
 
-        sql = '''DELETE FROM profil_xristi
+        sql = '''DELETE FROM Προφίλ_χρήστη
                 WHERE username  IN 
                   (
                     SELECT secondary_username 
-                    FROM parexei_dikaiwmata As B
+                    FROM Παρέχει_δικαιώματα As B
                     Where B.primary_username IS NULL
                    )'''
         #if there still exist rows in parexei dikaiwmata table with null primary username, no primary profiles exist anymore, therefore delete secondary profiles as well
@@ -776,7 +777,7 @@ class Window(QWidget): #main window of the application
         for i in reversed(range(1,self.page1Layout.count())): 
             self.page1Layout.itemAt(i).widget().setParent(None)
 
-        cursor.execute("SELECT * FROM 'profil_xristi';") 
+        cursor.execute("SELECT * FROM 'Προφίλ_χρήστη';") 
         self.profiles = cursor.fetchall()
         
         for i in self.profiles: 
