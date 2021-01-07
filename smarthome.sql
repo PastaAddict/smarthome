@@ -54,7 +54,7 @@ CREATE TABLE "Πραγματοποιεί" (
 	"username_πραγματοποιεί"	varchar(30),
 	"command_id_πραγματοποιεί"	int NOT NULL,
 	"όνομα_συσκευής_control"	varchar(30),
-	"ημερομηνία/ώρα"	datetime NOT NULL,
+	"ημερομηνία_ώρα"	datetime NOT NULL,
 	"IP_Address"	varchar(15),
 	PRIMARY KEY("command_id_πραγματοποιεί"),
 	FOREIGN KEY("command_id_πραγματοποιεί") REFERENCES "Εντολή"("command_id") ON DELETE CASCADE ON UPDATE CASCADE,
