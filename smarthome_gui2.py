@@ -518,7 +518,7 @@ class Window(QWidget): #main window of the application
                         cursor.execute(sql) #remove the appliance rights from exei prosvasi table
                 else:
                     if self.page7Layout.itemAt(i).widget().isChecked(): #otherwise insert it 
-                        sql=f''' INSERT INTO Έχει_πρόσβαση(username_πρόσβασης,device_id)
+                        sql=f''' INSERT INTO Έχει_πρόσβαση(username_πρόσβασης,device_id_πρόσβασης)
                         VALUES('{self.child_profiles.currentText()}','{self.appliances[i-2][0]}') '''
                         cursor.execute(sql)
 
