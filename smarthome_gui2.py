@@ -28,7 +28,6 @@ from PyQt5.QtWidgets import (
 
 conn = sqlite3.connect(r"C:\Users\krist\OneDrive\Υπολογιστής\smarthome.db") #connect to local sqlite database
 cursor = conn.cursor() #initialize cursor, used to execute queries
-#conn.execute("PRAGMA foreign_keys = 1") #enforces referential integrity constraints
 
 client = pymongo.MongoClient('localhost', 27017) #connect to local mongodb server
 db = client['smarthome'] #connect to smarthome database
@@ -410,13 +409,14 @@ class Window(QWidget): #main window of the application
     def createPrimaryProfile(self): #action binded to enter button create primary profile page
         if self.new_username.text()!='' and ((self.new_password.text()!='') ^ self.isPublic.isChecked()): #chech wether text edits are empty, allow password to be empty if the profile is public
             try:
+                cursor.execute('''INSERT INTO Προφίλ_χρήστη(username,password,alternative_password,δημόσιο,πολλαπλών_χρηστών)
+                    VALUES(?,?,?,?,?)''',(self.new_username.text(),self.new_password.text(),None if self.new_alternative_password.text()=='' else self.new_alternative_password.text(),self.isPublic.isChecked(),self.isMulti.isChecked()))#query to enter new profile in user profiles table, if no alternative password enter NULL instead of empty string
+
                 sql=f''' INSERT INTO Πρωτεύον_προφίλ(username_pro)
                     VALUES('{self.new_username.text()}') '''
                 cursor.execute(sql) #sql query to enter new profile in primary profile table
 
-                cursor.execute('''INSERT INTO Προφίλ_χρήστη(username,password,alternative_password,δημόσιο,πολλαπλών_χρηστών)
-                    VALUES(?,?,?,?,?)''',(self.new_username.text(),self.new_password.text(),None if self.new_alternative_password.text()=='' else self.new_alternative_password.text(),self.isPublic.isChecked(),self.isMulti.isChecked()))
-                #query to enter new profile in user profiles table, if no alternative password enter NULL instead of empty string
+                
                 conn.commit() #commit changes to database
 
                 self.button = QPushButton(self.new_username.text()) #add new profile button to home page
@@ -440,6 +440,10 @@ class Window(QWidget): #main window of the application
         if self.master_profiles.currentText()!='': #if no primary profiles exist, user cannot create secondary profile
             if self.new_username.text()!='' and ((self.new_password.text()!='') ^ self.isPublic.isChecked()): #same constraints as primary profiles
                 try:
+                    cursor.execute('''INSERT INTO Προφίλ_χρήστη(username,password,alternative_password,δημόσιο,πολλαπλών_χρηστών)
+                    VALUES(?,?,?,?,?)''',(self.new_username.text(),self.new_password.text(),None if self.new_alternative_password.text()=='' else self.new_alternative_password.text(),self.isPublic.isChecked(),self.isMulti.isChecked()))
+                    #insert new profile to user profilew table
+                    
                     sql=f''' INSERT INTO Δευτερεύον_προφίλ(username_de)
                         VALUES('{self.new_username.text()}') '''
                     cursor.execute(sql) #insert new profile to secondary profiles table
@@ -448,9 +452,7 @@ class Window(QWidget): #main window of the application
                           VALUES('{self.master_profiles.currentText()}','{self.new_username.text()}') '''
                     cursor.execute(sql) #insert new profile dependency to parexei dikaiwmata table
 
-                    cursor.execute('''INSERT INTO Προφίλ_χρήστη(username,password,alternative_password,δημόσιο,πολλαπλών_χρηστών)
-                    VALUES(?,?,?,?,?)''',(self.new_username.text(),self.new_password.text(),None if self.new_alternative_password.text()=='' else self.new_alternative_password.text(),self.isPublic.isChecked(),self.isMulti.isChecked()))
-                    #insert new profile to user profilew table
+
 
                     conn.commit()
 
@@ -758,8 +760,10 @@ class Window(QWidget): #main window of the application
                     ELSE NULL
             END)
             where primary_username IS NULL'''#from parexei dikaiwmata table find all rows with NULL primary_username due to primary profile deletion
-        conn.execute(sql)                    #if another primary profile exists transfer secondary profile control to this new primary profile, otherwise None
-
+        try:
+            conn.execute(sql)                    #if another primary profile exists transfer secondary profile control to this new primary profile, otherwise None
+        except Exception as e:
+            print(e)
         sql = '''DELETE FROM Προφίλ_χρήστη
                 WHERE username  IN 
                   (
@@ -784,7 +788,13 @@ class Window(QWidget): #main window of the application
             self.button = QPushButton(i[0])
             self.page1Layout.addRow(self.button)
             self.button.clicked.connect(self.selectProfile)
-            
+
+
+        self.master_profiles.clear()
+        cursor.execute("SELECT * FROM 'Πρωτεύον_προφίλ';") #query returning all primary profiles
+        masterprofiles = cursor.fetchall()
+
+        self.master_profiles.addItems([i[0] for i in masterprofiles])
         self.stackedLayout.setCurrentIndex(0)
        
 
