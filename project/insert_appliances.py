@@ -200,7 +200,7 @@ appliances = {appliance_names[i]:(mongo_appliances[i],sql_appliances[i]) for i i
 for i,j in enumerate(appliances.keys()):
     print(i,':',j)
 
-print('appliances on sale, select appliances by typing the numbers of the appliances you want seperated by spaces, each appliance once')
+print('appliances on sale, select appliances by typing the corresponding numbers seperated by spaces, each appliance once')
 
 selection = map(int, input().split())
 
