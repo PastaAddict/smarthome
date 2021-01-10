@@ -23,7 +23,9 @@ from PyQt5.QtWidgets import (
     QSlider,
     QTableView,
     QAbstractScrollArea,
-    QHeaderView
+    QHeaderView,
+    QScrollArea,
+    QGroupBox
 )
 
 conn = sqlite3.connect(r"smarthome.db") #connect to local sqlite database
@@ -116,7 +118,7 @@ class Window2(QMainWindow): #window containing a QTableView with the commands hi
 class Window(QWidget): #main window of the application
     def __init__(self):
         super().__init__()
-
+        #self.setWindowFlags(Qt.FramelessWindowHint)
         self.setWindowTitle("Smarthome")
         
         cursor.execute("SELECT * FROM Συσκευή") #query to get all appliances
@@ -124,7 +126,6 @@ class Window(QWidget): #main window of the application
         
         # Create a top-level layout
         layout = QVBoxLayout() #top level layout structured as a vertical box
-        self.setLayout(layout) #set it as layout
 
         # Create the stacked layout
         self.stackedLayout = QStackedLayout() #rest of the app is structured as a stacked layout, many layouts one on top of the other with the ability to switch between them
@@ -343,7 +344,22 @@ class Window(QWidget): #main window of the application
 
         
         # Add the combo box and the stacked layout to the top-level layout
-        layout.addLayout(self.stackedLayout)
+        groupBox = QGroupBox() #Create a group box that will contain a scroll area
+        groupBox.setFlat(True)
+        groupBox.setStyleSheet("QGroupBox{border: 0;}") #remove groupbox border
+        layout.addLayout(self.stackedLayout) #add stacked layout to main layout
+        groupBox.setLayout(layout) #set groupbox layout as the main layout
+        scroll = QScrollArea() #create scroll area
+        scroll.setStyleSheet("QScrollArea{border: 0;}") #remove scroll area border
+        scroll.setWidget(groupBox) #scroll area conatins the layout
+        scroll.setWidgetResizable(True) #scroll area adjusts to contents
+        scroll.setFixedHeight(400) #fixed window length
+        scroll.setFixedWidth(300) #fixed window width
+        layout2 = QVBoxLayout(self) #create a final layout that will contain the scroll area
+        layout2.addWidget(scroll) 
+        self.show()
+        
+        
 
     def selectProfile(self): #binded to profile buttons
         self.profile = self.sender().text() #get the profile button pressed username
