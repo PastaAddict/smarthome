@@ -617,48 +617,33 @@ class Window(QWidget): #main window of the application
         entoli_name = list(self.entoles.keys())[cntr] #use that index to find theat command
         entoli = self.entoles[entoli_name]
 
-        if entoli_name == 'Turn on': #if the command is turn on
-            sql=f''' UPDATE Συσκευή SET ενεργή=true 
-                WHERE device_id = '{self.appliance_id}' '''
-            cursor.execute(sql) #sql query to set appliance state as on in appliance table
+        if entoli_name == 'Turn on' or entoli_name == 'Turn on':
+            if entoli_name == 'Turn on': #if the command is turn on
+                sql=f''' UPDATE Συσκευή SET ενεργή=true 
+                    WHERE device_id = '{self.appliance_id}' '''
+                cursor.execute(sql) #sql query to set appliance state as on in appliance table
 
-        elif entoli_name == 'Turn off': #otherwise set it to off
-            sql=f''' UPDATE Συσκευή SET ενεργή=false
-                WHERE device_id = '{self.appliance_id}' '''
+            elif entoli_name == 'Turn off': #otherwise set it to off
+                sql=f''' UPDATE Συσκευή SET ενεργή=false
+                    WHERE device_id = '{self.appliance_id}' '''
+                cursor.execute(sql)
+
+            #reinitialize appliances to reset appliance state column for both appliances and allowed appliances sets
+            cursor.execute("SELECT * FROM Συσκευή")
+            self.appliances = cursor.fetchall()
+
+            sql = f'''select Έχει_πρόσβαση.device_id_πρόσβασης,είδος,δωμάτιο,ενεργή from Έχει_πρόσβαση join Συσκευή on Συσκευή.device_id=Έχει_πρόσβαση.device_id_πρόσβασης
+                    and username_πρόσβασης='{self.profile}';'''
             cursor.execute(sql)
+            self.allowed_appliances = cursor.fetchall()
+            
+            cursor.execute(sql)
+            conn.commit()
 
             
             
-        _id = str(entoli['entolh_id']) #find the command id from mongo db appliances collection
+        self._id = str(entoli['entolh_id']) #find the command id from mongo db appliances collection
         
-        sql=f''' INSERT INTO Εντολή(εντολή_id)
-              VALUES('{_id}') '''
-        cursor.execute(sql) #sql query to insert εντολή_id in commands table
-
-        sql=f''' INSERT INTO Ελέγχει(command_id_ελέγχει,device_id_ελέγχει)
-              VALUES(last_insert_rowid(),'{self.appliance_id}') '''
-        cursor.execute(sql) #sql query to insert command and appliance to controls table
-
-        sql=f''' INSERT INTO Πραγματοποιεί(username_πραγματοποιεί,command_id_πραγματοποιεί,όνομα_συσκευής_control,ημερομηνία_ώρα,IP_Address)
-              VALUES('{self.profile}',last_insert_rowid(),'{socket.gethostname()}',CURRENT_TIMESTAMP,'{socket.gethostbyname(socket.gethostname())}') '''
-        cursor.execute(sql) #insert everything to realize table
-        
-        #reinitialize appliances to reset appliance state column for both appliances and allowed appliances sets
-        cursor.execute("SELECT * FROM Συσκευή")
-        self.appliances = cursor.fetchall()
-
-        sql = f'''select Έχει_πρόσβαση.device_id_πρόσβασης,είδος,δωμάτιο,ενεργή from Έχει_πρόσβαση join Συσκευή on Συσκευή.device_id=Έχει_πρόσβαση.device_id_πρόσβασης
-                and username_πρόσβασης='{self.profile}';'''
-        cursor.execute(sql)
-        self.allowed_appliances = cursor.fetchall()
-        
-        cursor.execute(sql)
-        conn.commit()
-        
-        
-        sql = f'''select last_insert_rowid() ;'''
-        cursor.execute(sql) #find the id of the last command that was inserted
-        self.entoli_id = str(cursor.fetchall()[0][0])
         
 
         if entoli['parametroi']: #for every command parameter
@@ -684,14 +669,36 @@ class Window(QWidget): #main window of the application
             self.page11Layout.addRow(self.parameters_button)
             self.parameters_button.clicked.connect(self.save_command_mongo)
 
+            self.back_to_commands_button = QPushButton('Cancel') #button that saves command and parameters to arxeio entolwn collection when pressed
+            self.page11Layout.addRow(self.back_to_commands_button)
+            self.back_to_commands_button.clicked.connect(self.back_to_commands)
+
 
             self.stackedLayout.setCurrentIndex(9) #switch to set parameters page page
                 
             
-        else: #if command contains no paramters
+        else: #if command contains no parameters
+            sql=f''' INSERT INTO Εντολή(εντολή_id)
+              VALUES('{self._id}') '''
+            cursor.execute(sql) #sql query to insert εντολή_id in commands table
+
+            sql=f''' INSERT INTO Ελέγχει(command_id_ελέγχει,device_id_ελέγχει)
+                  VALUES(last_insert_rowid(),'{self.appliance_id}') '''
+            cursor.execute(sql) #sql query to insert command and appliance to controls table
+
+            sql=f''' INSERT INTO Πραγματοποιεί(username_πραγματοποιεί,command_id_πραγματοποιεί,όνομα_συσκευής_control,ημερομηνία_ώρα,IP_Address)
+                  VALUES('{self.profile}',last_insert_rowid(),'{socket.gethostname()}',CURRENT_TIMESTAMP,'{socket.gethostbyname(socket.gethostname())}') '''
+            cursor.execute(sql) #insert everything to realize table
+            
+            
+            
+            sql = f'''select last_insert_rowid() ;'''
+            cursor.execute(sql) #find the id of the last command that was inserted
+            self.entoli_id = str(cursor.fetchall()[0][0])
+        
             db.arxeio_entolwn.insert_one({"_id":ObjectId('0'*(24-len(self.entoli_id))+self.entoli_id),"parametroi":None}) #add it to arxeio entolwn collection, its id is the ObjectId
             self.back_to_appliances() #switch to appliances page                                                          # representation of the command id 
-
+        conn.commit()
     
     def changedValue(self): #binded to parameter slider in set parameters page
         a = self.sender()
@@ -715,10 +722,33 @@ class Window(QWidget): #main window of the application
             except:#exception to catch getting non slider widget text retrieval exceptions
                 break
 
+
+        sql=f''' INSERT INTO Εντολή(εντολή_id)
+              VALUES('{self._id}') '''
+        cursor.execute(sql) #sql query to insert εντολή_id in commands table
+
+        sql=f''' INSERT INTO Ελέγχει(command_id_ελέγχει,device_id_ελέγχει)
+              VALUES(last_insert_rowid(),'{self.appliance_id}') '''
+        cursor.execute(sql) #sql query to insert command and appliance to controls table
+
+        sql=f''' INSERT INTO Πραγματοποιεί(username_πραγματοποιεί,command_id_πραγματοποιεί,όνομα_συσκευής_control,ημερομηνία_ώρα,IP_Address)
+              VALUES('{self.profile}',last_insert_rowid(),'{socket.gethostname()}',CURRENT_TIMESTAMP,'{socket.gethostbyname(socket.gethostname())}') '''
+        cursor.execute(sql) #insert everything to realize table
+        
+        
+        
+        sql = f'''select last_insert_rowid() ;'''
+        cursor.execute(sql) #find the id of the last command that was inserted
+        self.entoli_id = str(cursor.fetchall()[0][0])
+        conn.commit()
+        
         db.arxeio_entolwn.insert_one({"_id":ObjectId('0'*(24-len(self.entoli_id))+self.entoli_id),"parametroi":parametroi}) #insert command id an parameters in arxeio entolwn collection
         self.stackedLayout.setCurrentIndex(7) #switch to select appliance command page
+
+    def back_to_commands(self):
+        self.stackedLayout.setCurrentIndex(7)
         
-    def show_consumption(self): #binded to show consumptio button in primary profile actions page
+    def show_consumption(self): #binded to show consumption button in primary profile actions page
         
         for i in reversed(range(self.page10Layout.count())): #delete all previous widgets in consumption page
                 self.page10Layout.itemAt(i).widget().setParent(None)
