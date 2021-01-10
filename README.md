@@ -12,4 +12,4 @@ bson 0.5.10 <br/>
 Smarthome app that utilizes the capabilities of both SQL and NoSQL databases.
 
 
-<img src="https://github.com/PastaAddict/smarthome/blob/main/flowchart.png" width="300" />
+<img src="https://github.com/PastaAddict/smarthome/blob/main/flowchart.png" width="450" />
