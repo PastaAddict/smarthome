@@ -1,6 +1,7 @@
 # ECE ΓΚ703 Databases Project 2020-2021
 # Group 16 Smarthome Application
-
+# PastaAddict Κρίστι Τοπολλάι 1059389
+# fine-just Ζήσης Μανούσκος 1063974
 Requirements <br/> 
 Tested on Python 3.8.3, Windows 10 x64<br/> 
 
