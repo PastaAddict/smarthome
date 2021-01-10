@@ -10,6 +10,7 @@ pymongo 3.11.2<br/>
 bson 0.5.10 <br/> 
 
 Smarthome app that utilizes the capabilities of both SQL and NoSQL databases.
+Download project folder, excecute insert_appliances.py to populate the database, execute gui.py to use the app.
 
 
 <img src="https://github.com/PastaAddict/smarthome/blob/main/flowchart.png" width="450" />
