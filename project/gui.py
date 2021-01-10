@@ -617,7 +617,7 @@ class Window(QWidget): #main window of the application
         entoli_name = list(self.entoles.keys())[cntr] #use that index to find theat command
         entoli = self.entoles[entoli_name]
 
-        if entoli_name == 'Turn on' or entoli_name == 'Turn on':
+        if entoli_name == 'Turn on' or entoli_name == 'Turn off':
             if entoli_name == 'Turn on': #if the command is turn on
                 sql=f''' UPDATE Συσκευή SET ενεργή=true 
                     WHERE device_id = '{self.appliance_id}' '''
