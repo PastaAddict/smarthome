@@ -13,4 +13,4 @@ Smarthome app that utilizes the capabilities of both SQL and NoSQL databases.
 Download project folder, excecute insert_appliances.py to populate the database, execute gui.py to use the app.
 
 
-<img src="https://github.com/PastaAddict/smarthome/blob/main/flowchart.png" width="450" />
+<img src="https://github.com/PastaAddict/smarthome/blob/main/Other/flowchart.png" width="450" />
